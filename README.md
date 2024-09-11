@@ -19,7 +19,7 @@ public class MyDeepCopy : DeepCopy<int, int, int>
 
     private class ChildTableStep(KeyMap<int> keyMap) : Step<ChildTable>(keyMap)
     {
-        protected override Task<IEnumerable<ParentTable> QuerySourceRowsAsync(IDbConnection connection, IDbTransaction transaction, int parameters)
+        protected override Task<IEnumerable<ChildTable> QuerySourceRowsAsync(IDbConnection connection, IDbTransaction transaction, int parameters)
         {
               // todo: some kind of query that returns the rows I want to copy
         }
