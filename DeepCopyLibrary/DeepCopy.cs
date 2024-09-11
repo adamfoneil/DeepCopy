@@ -2,13 +2,19 @@
 
 namespace DeepCopyLibrary;
 
-public abstract class DeepCopy<TKey, TInputParams, TOutput> where TInputParams : new()
+public abstract class DeepCopy<TKey, TInputParams, TOutput>(IKeyMapStore<TKey> keyMapStore) 
+	where TInputParams : new() 
+	where TKey : notnull
 {
-	public Dictionary<(string, TKey), TKey> IdMap { get; private set; } = new();
+	private readonly IKeyMapStore<TKey> _keyMapStore = keyMapStore;
+
+	public Dictionary<(string, TKey), TKey> KeyMap { get; private set; } = [];
 
 	public async Task<TOutput> ExecuteAsync(IDbConnection connection, TInputParams parameters)
 	{
-		if (connection.State != ConnectionState.Open) connection.Open();
+		if (connection.State != ConnectionState.Open) connection.Open();		
+
+		KeyMap = await _keyMapStore.GetAsync() ?? [];
 
 		using var txn = connection.BeginTransaction();
 
@@ -16,7 +22,7 @@ public abstract class DeepCopy<TKey, TInputParams, TOutput> where TInputParams :
 
 		try
 		{
-			result = await OnExecuteAsync(connection, txn, IdMap, parameters);
+			result = await OnExecuteAsync(connection, txn, parameters);
 			txn.Commit();
 		}
 		catch
@@ -31,19 +37,15 @@ public abstract class DeepCopy<TKey, TInputParams, TOutput> where TInputParams :
 	/// <summary>
 	/// override this to invoke your various Step classes (using Step.ExecuteAsync)
 	/// </summary>
-	protected abstract Task<TOutput> OnExecuteAsync(IDbConnection connection, IDbTransaction transaction, Dictionary<(string, TKey), TKey> idMap, TInputParams parameters);
+	protected abstract Task<TOutput> OnExecuteAsync(IDbConnection connection, IDbTransaction transaction, TInputParams parameters);
 
 	/// <summary>
 	/// defines an individual copy step as part of a larger operation
 	/// </summary>   
-	protected abstract class Step<TEntity> where TEntity : new()
+	protected abstract class Step<TEntity>(Dictionary<(string, TKey), TKey> keyMap, IKeyMapStore<TKey> keyMapStore) where TEntity : new()
 	{
-		protected readonly Dictionary<(string, TKey), TKey> IdMap = new();
-
-		public Step(Dictionary<(string, TKey), TKey> idMap)
-		{
-			IdMap = idMap;
-		}
+		protected readonly Dictionary<(string, TKey), TKey> KeyMap = keyMap;
+		private readonly IKeyMapStore<TKey> _keyMapStore = keyMapStore;
 
 		protected abstract string Name { get; }
 		protected abstract Task<IEnumerable<TEntity>> QuerySourceRowsAsync(IDbConnection connection, IDbTransaction transaction, TInputParams parameters);
@@ -60,7 +62,7 @@ public abstract class DeepCopy<TKey, TInputParams, TOutput> where TInputParams :
 			{
 				var newRow = CreateNewRow(parameters, sourceRow);
 				var newKey = await InsertNewRowAsync(connection, transaction, newRow, parameters);
-				IdMap.Add((Name, GetKey(sourceRow)), newKey);
+				KeyMap.Add((Name, GetKey(sourceRow)), newKey);
 			}
 
 			await OnStepCompletedAsync(connection, transaction, parameters);
