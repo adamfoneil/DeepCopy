@@ -75,7 +75,7 @@ public abstract class DeepCopy<TKey, TInputParams, TOutput>(ILogger<DeepCopy<TKe
 
 				var newRow = CreateNewRow(parameters, sourceRow);
 				var newKey = await InsertNewRowAsync(connection, transaction, newRow, parameters);
-				await _keyMap.AddAsync(Name, sourceKey, newKey);				
+				await _keyMap.AddAsync(Name, sourceKey, newKey, transaction);				
 			}
 
 			await OnStepCompletedAsync(connection, transaction, parameters);
