@@ -20,13 +20,10 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 	private readonly IMetricsRepository _metrics = metricsRepository;
 	private readonly ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> _logger = logger;
 
-	public async Task<TOutput> ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken) =>
-		await OnExecuteAsync(sourceConnection, destConnection, parameters, cancellationToken);
-
 	/// <summary>
 	/// override this to invoke your various Step classes (using Step.ExecuteAsync)
 	/// </summary>
-	protected abstract Task<TOutput> OnExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken);
+	public abstract Task<TOutput> ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// defines an individual copy step as part of a larger operation
