@@ -1,24 +1,27 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Data;
+using System.Diagnostics;
 
 namespace DeepCopyLibrary;
 
-public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> logger)
+/// <summary>
+/// Performs a multi-step copy operation between two connections, allowing for stopping and resuming.
+/// </summary>
+public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
+	IKeyMapRepository<TKey> keyMapRepository,
+	IErrorRepository errorRepository,
+	IMetricsRepository metricsRepository,
+	ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> logger)
 	where TInputParams : new()
 	where TKey : notnull
 {
-	private IKeyMapRepository<TKey>? _keyMap;
-
+	private readonly IKeyMapRepository<TKey> _keyMap = keyMapRepository;
+	private readonly IErrorRepository _errors = errorRepository;
+	private readonly IMetricsRepository _metrics = metricsRepository;
 	private readonly ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> _logger = logger;
 
-	public async Task<TOutput> ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken)
-	{
-		_keyMap = await LoadKeyMapAsync();		
-		
-		return await OnExecuteAsync(sourceConnection, destConnection, parameters, cancellationToken);
-	}
-
-	protected abstract Task<IKeyMapRepository<TKey>> LoadKeyMapAsync();
+	public async Task<TOutput> ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken) =>
+		await OnExecuteAsync(sourceConnection, destConnection, parameters, cancellationToken);
 
 	/// <summary>
 	/// override this to invoke your various Step classes (using Step.ExecuteAsync)
@@ -30,43 +33,79 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(ILogger<Remote
 	/// </summary>   
 	protected abstract class Step<TEntity>(
 		IKeyMapRepository<TKey> keyMap,
+		IErrorRepository errorRepository,
+		IMetricsRepository metricsRepository,
 		ILogger<Step<TEntity>> logger) where TEntity : new()
 	{
-		private readonly IKeyMapRepository<TKey> _keyMap = keyMap;
-		private readonly ILogger<Step<TEntity>> _logger = logger;
+		protected readonly IKeyMapRepository<TKey> KeyMap = keyMap;		
+		protected readonly ILogger<Step<TEntity>> Logger = logger;
+
+		protected readonly IErrorRepository _errors = errorRepository;
+		private readonly IMetricsRepository _metrics = metricsRepository;
 
 		protected abstract string Name { get; }
 		protected abstract Task<IEnumerable<TEntity>> QuerySourceRowsAsync(IDbConnection sourceConnection, TInputParams parameters);
 		protected abstract TEntity CreateNewRow(TInputParams parameters, TEntity sourceRow);
 		protected abstract TKey GetKey(TEntity sourceRow);
-		protected abstract Task<TKey> InsertNewRowAsync(IDbConnection destConnection, TEntity entity, TInputParams parameters);
-		protected virtual async Task OnStepCompletedAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters) => await Task.CompletedTask;
+		protected abstract Task<TKey> InsertNewRowAsync(IDbConnection destConnection, TEntity entity, TInputParams parameters);		
 
 		public async Task ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken)
 		{
 			if (cancellationToken.IsCancellationRequested) return;
 
-			_logger.LogDebug("Querying source rows for step {StepName}", Name);
-			var sourceRows = await QuerySourceRowsAsync(sourceConnection, parameters);
+			var sw = Stopwatch.StartNew();			
+			int successRows = 0;
+			int errorRows = 0;
+			int skippedRows = 0;
 
-			foreach (var sourceRow in sourceRows)
+			try
 			{
-				if (cancellationToken.IsCancellationRequested) break;
+				Logger.LogDebug("Querying source rows for step {StepName}", Name);
+				var sourceRows = await QuerySourceRowsAsync(sourceConnection, parameters);
 
-				var sourceKey = GetKey(sourceRow);
-				if (_keyMap.ContainsKey(Name, sourceKey))
+				try
 				{
-					_logger.LogDebug("Skipping row with key {Key} for step {StepName}", sourceKey, Name);
-					continue;
+					foreach (var sourceRow in sourceRows)
+					{
+						if (cancellationToken.IsCancellationRequested) break;
+
+						var sourceKey = GetKey(sourceRow);
+						if (KeyMap.ContainsKey(Name, sourceKey))
+						{
+							skippedRows++;
+							Logger.LogDebug("Skipping row with key {Key} for step {StepName}", sourceKey, Name);
+							continue;
+						}
+
+						var newRow = CreateNewRow(parameters, sourceRow);
+						try
+						{
+							var newKey = await InsertNewRowAsync(destConnection, newRow, parameters);
+							successRows++;
+							await KeyMap.AddAsync(Name, sourceKey, newKey);							
+						}
+						catch (Exception exc)
+						{
+							errorRows++;
+							Logger.LogError(exc, "Error inserting row for step {StepName} source key {key}", Name, sourceKey);
+							await _errors.WhenInsertingAsync(Name, exc, sourceRow, newRow);							
+						}
+					}
 				}
-
-				var newRow = CreateNewRow(parameters, sourceRow);
-				var newKey = await InsertNewRowAsync(destConnection, newRow, parameters);
-				await _keyMap.AddAsync(Name, sourceKey, newKey);
+				catch (Exception exc)
+				{
+					await _errors.WhenLoopingAsync(Name, exc);
+				}
+				finally
+				{
+					sw.Stop();
+					await _metrics.LogAsync(Name, successRows, errorRows, skippedRows, sw.Elapsed);
+				}
 			}
-
-			await OnStepCompletedAsync(sourceConnection, destConnection, parameters);
+			catch (Exception exc)
+			{
+				await _errors.WhenQueryingAsync(Name, exc);
+			}
 		}
 	}
-
 }
