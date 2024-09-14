@@ -1,6 +1,6 @@
 ﻿namespace SampleApp;
 
-public enum SpeciesOptions
+public enum Species
 {
 	Cat = 1,
 	Dog = 2
@@ -9,8 +9,8 @@ public enum SpeciesOptions
 public class TemplatePatient
 {
 	public int Id { get; set; }
-	public int AppointmentTemplateId { get; set; }
+	public string Name { get; set; } = default!;
 	public char Sex { get; set; }
-	public SpeciesOptions Species { get; set; }
+	public Species Species { get; set; }
 	public ICollection<TemplateService> Services { get; set; } = [];
 }

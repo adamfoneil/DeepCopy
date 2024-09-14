@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SampleApp;
 
@@ -11,9 +12,11 @@ using SampleApp;
 namespace SampleAppLocal.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240914152217_TemplatePatient")]
+    partial class TemplatePatient
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -181,9 +184,6 @@ namespace SampleAppLocal.Migrations
                     b.Property<int?>("BillToClientId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("BillToClientId1")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
@@ -196,10 +196,6 @@ namespace SampleAppLocal.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BillToClientId");
-
-                    b.HasIndex("BillToClientId1");
-
-                    b.HasIndex("ServiceId");
 
                     b.HasIndex("TemplatePatientId");
 
@@ -271,27 +267,11 @@ namespace SampleAppLocal.Migrations
                         .HasForeignKey("BillToClientId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("SampleApp.VolumeClient", "BillToClient")
-                        .WithMany()
-                        .HasForeignKey("BillToClientId1");
-
-                    b.HasOne("SampleApp.Service", "Service")
-                        .WithMany()
-                        .HasForeignKey("ServiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("SampleApp.TemplatePatient", "TemplatePatient")
+                    b.HasOne("SampleApp.TemplatePatient", null)
                         .WithMany("Services")
                         .HasForeignKey("TemplatePatientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("BillToClient");
-
-                    b.Navigation("Service");
-
-                    b.Navigation("TemplatePatient");
                 });
 
             modelBuilder.Entity("SampleApp.Appointment", b =>

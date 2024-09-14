@@ -1,0 +1,80 @@
+{
+	"Templates": [
+		{
+			"Name": "Owned Male Cat",
+			"Sex": "M",
+			"Species": 1,
+			"Services": [
+				{
+					"Name": "Neuter",
+					"Price": 40
+				},
+				{
+					"Name": "Rabies Vaccine",
+					"Price": 10
+				}
+			]
+		},
+		{
+			"Name": "Owned Female Cat",
+			"Sex": "F",
+			"Species": 1,
+			"Services": [
+				{
+					"Name": "Spay",
+					"Price": 60
+				},
+				{
+					"Name": "Rabies Vaccine",
+					"Price": 10
+				}
+			]
+		},
+		{
+			"Name": "Owned Female Dog",
+			"Sex": "F",
+			"Species": 2,
+			"Services": [
+				{
+					"Name": "Spay",
+					"Price": 70
+				},
+				{
+					"Name": "Rabies Vaccine",
+					"Price": 10
+				}
+			]
+		},
+		{
+			"Name": "Owned Male Dog",
+			"Sex": "M",
+			"Species": 2,
+			"Services": [
+				{
+					"Name": "Neuter",
+					"Price": 50
+				},
+				{
+					"Name": "Rabies Vaccine",
+					"Price": 10
+				}
+			]
+		},
+		{
+			"Name": "Shelter A Male Cat",
+			"Sex": "M",
+			"Species": 1,
+			"Services": [
+				{
+					"Name": "Neuter",
+					"Price": 35,
+					"BillToClient": "Shelter A"
+				},
+				{
+					"Name": "Rabies Vaccine",
+					"Price": 10
+				}
+			]
+		}
+	]
+}

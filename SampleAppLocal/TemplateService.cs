@@ -10,6 +10,10 @@ public class TemplateService
 	public int ServiceId { get; set; }
 	public int? BillToClientId { get; set; }
 	public decimal Price { get; set; }
+
+	public Service Service { get; set; } = new();
+	public TemplatePatient TemplatePatient { get; set; } = new();
+	public VolumeClient? BillToClient { get; set; } = new();
 }
 
 public class TemplateServiceConfiguration : IEntityTypeConfiguration<TemplateService>

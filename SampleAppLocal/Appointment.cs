@@ -16,7 +16,7 @@ public class Patient
 	public int AppointmentId { get; set; }
 	public string Name { get; set; } = default!;
 	public char Sex { get; set; }
-	public SpeciesOptions Species { get; set; }
+	public Species Species { get; set; }
 
 	public Appointment Appointment { get; set; } = new();
 	public ICollection<PatientService> Services { get; set; } = [];

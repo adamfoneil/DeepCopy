@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "Testing\Testing.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleAppLocal", "SampleAppLocal\SampleAppLocal.csproj", "{D4D75D5B-D34F-47AD-97A9-557B3F751DE9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConnection", "TestConnection\TestConnection.csproj", "{EF9042C1-2CAE-4536-A614-84C016FFC8A2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{D4D75D5B-D34F-47AD-97A9-557B3F751DE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D4D75D5B-D34F-47AD-97A9-557B3F751DE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D4D75D5B-D34F-47AD-97A9-557B3F751DE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF9042C1-2CAE-4536-A614-84C016FFC8A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF9042C1-2CAE-4536-A614-84C016FFC8A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF9042C1-2CAE-4536-A614-84C016FFC8A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF9042C1-2CAE-4536-A614-84C016FFC8A2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

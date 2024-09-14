@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SampleApp;
 
@@ -11,9 +12,11 @@ using SampleApp;
 namespace SampleAppLocal.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240914152135_RemoveApptTemplate")]
+    partial class RemoveApptTemplate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -146,30 +149,6 @@ namespace SampleAppLocal.Migrations
                     b.ToTable("Services");
                 });
 
-            modelBuilder.Entity("SampleApp.TemplatePatient", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Sex")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(1)");
-
-                    b.Property<int>("Species")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TemplatePatients");
-                });
-
             modelBuilder.Entity("SampleApp.TemplateService", b =>
                 {
                     b.Property<int>("Id")
@@ -179,9 +158,6 @@ namespace SampleAppLocal.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("BillToClientId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("BillToClientId1")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Price")
@@ -196,12 +172,6 @@ namespace SampleAppLocal.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BillToClientId");
-
-                    b.HasIndex("BillToClientId1");
-
-                    b.HasIndex("ServiceId");
-
-                    b.HasIndex("TemplatePatientId");
 
                     b.ToTable("TemplateService");
                 });
@@ -270,28 +240,6 @@ namespace SampleAppLocal.Migrations
                         .WithMany()
                         .HasForeignKey("BillToClientId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("SampleApp.VolumeClient", "BillToClient")
-                        .WithMany()
-                        .HasForeignKey("BillToClientId1");
-
-                    b.HasOne("SampleApp.Service", "Service")
-                        .WithMany()
-                        .HasForeignKey("ServiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("SampleApp.TemplatePatient", "TemplatePatient")
-                        .WithMany("Services")
-                        .HasForeignKey("TemplatePatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BillToClient");
-
-                    b.Navigation("Service");
-
-                    b.Navigation("TemplatePatient");
                 });
 
             modelBuilder.Entity("SampleApp.Appointment", b =>
@@ -300,11 +248,6 @@ namespace SampleAppLocal.Migrations
                 });
 
             modelBuilder.Entity("SampleApp.Patient", b =>
-                {
-                    b.Navigation("Services");
-                });
-
-            modelBuilder.Entity("SampleApp.TemplatePatient", b =>
                 {
                     b.Navigation("Services");
                 });
