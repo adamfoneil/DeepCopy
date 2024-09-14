@@ -24,9 +24,7 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 {
 	private readonly IKeyMapRepository<TKey> _keyMap = keyMapRepository;
 	private readonly IMetricsRepository _metrics = metricsRepository;
-	private readonly ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> _logger = logger;
-
-	public abstract int MaxErrors { get; }
+	private readonly ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> _logger = logger;	
 
 	/// <summary>
 	/// override this to invoke your various Step classes (using Step.ExecuteAsync)
@@ -51,6 +49,8 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 		protected abstract TEntity CreateNewRow(TInputParams parameters, TEntity sourceRow);
 		protected abstract TKey GetKey(TEntity sourceRow);
 		protected abstract Task<TKey> InsertNewRowAsync(IDbConnection destConnection, TEntity entity, TInputParams parameters);		
+
+		protected virtual int MaxErrors => 10;
 
 		public async Task ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken)
 		{
@@ -106,13 +106,17 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 							createErrors++;
 							Logger.LogError(exc, logTemplate, ErrorLocation.Creating, sourceKey);
 						}
-						
+						if (createErrors + insertErrors >= MaxErrors)
+						{
+							Logger.LogWarning("Too many errors, stopping");
+							break;
+						}
 					}
 				}
 				finally
 				{
 					sw.Stop();
-					await _metrics.LogAsync(Name, successRows, insertErrors, skippedRows, sw.Elapsed);
+					await _metrics.LogAsync(Name, successRows, insertErrors, createErrors, skippedRows, sw.Elapsed);
 				}
 			}
 			catch (Exception exc)

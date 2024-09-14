@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.7.34202.233
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DeepCopyLibrary", "DeepCopyLibrary\DeepCopyLibrary.csproj", "{DF3613D9-B115-4714-8EBC-78F9C1759A27}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DeepCopy.Abstractions", "DeepCopy.Abstractions\DeepCopy.Abstractions.csproj", "{440256FE-7DBC-4550-BE95-D81919E66789}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DF3613D9-B115-4714-8EBC-78F9C1759A27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DF3613D9-B115-4714-8EBC-78F9C1759A27}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DF3613D9-B115-4714-8EBC-78F9C1759A27}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DF3613D9-B115-4714-8EBC-78F9C1759A27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{440256FE-7DBC-4550-BE95-D81919E66789}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{440256FE-7DBC-4550-BE95-D81919E66789}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{440256FE-7DBC-4550-BE95-D81919E66789}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{440256FE-7DBC-4550-BE95-D81919E66789}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
