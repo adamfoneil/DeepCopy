@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Testing;
 
-internal class OrderCopy(ILogger<OrderCopy> logger) : LocalDeepCopy<int, int>(logger)
+internal class OrderCopier(ILogger<OrderCopier> logger) : LocalDeepCopy<int>(logger)
 {
 	const string Orders = "Orders";
 	const string LineItems = "LineItems";
