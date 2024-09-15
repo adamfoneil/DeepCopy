@@ -1,17 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace SampleApp;
+namespace SampleAppLocal;
 
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
-{	
-	public DbSet<Service> Services { get; set; }
-	public DbSet<Client> Clients { get; set; }
-	public DbSet<VolumeClient> VolumeClients { get; set; }
-	public DbSet<Appointment> Appointments { get; set; }
-	public DbSet<Patient> Patients { get; set; }
-	public DbSet<PatientService> PatientServices { get; set; }
-	public DbSet<TemplatePatient> TemplatePatients { get; set; }
+{
+	public DbSet<Order> Orders { get; set; }
+	public DbSet<LineItem> LineItems { get; set; }
+	public DbSet<LineItemComponent> LineItemComponents { get; set; }
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

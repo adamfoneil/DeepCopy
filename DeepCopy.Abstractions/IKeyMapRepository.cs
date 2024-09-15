@@ -1,4 +1,4 @@
-﻿namespace DeepCopyLibrary;
+﻿namespace DeepCopy.Abstractions;
 
 /// <summary>
 /// defines operations on durable store of source and destination keys

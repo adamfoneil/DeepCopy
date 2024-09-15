@@ -17,6 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DeepCopy.Abstractions\DeepCopy.Abstractions.csproj" />
+    <ProjectReference Include="..\SampleAppLocal\SampleAppLocal.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
   </ItemGroup>
 

@@ -1,4 +1,4 @@
-﻿namespace DeepCopyLibrary;
+﻿namespace DeepCopy.Abstractions;
 
 public interface IMetricsRepository
 {

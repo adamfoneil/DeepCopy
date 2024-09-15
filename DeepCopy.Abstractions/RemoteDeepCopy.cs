@@ -2,7 +2,7 @@
 using System.Data;
 using System.Diagnostics;
 
-namespace DeepCopyLibrary;
+namespace DeepCopy.Abstractions;
 
 public enum ErrorLocation
 {
@@ -16,7 +16,7 @@ public enum ErrorLocation
 /// Performs a multi-step copy operation between two connections, allowing for stopping and resuming.
 /// </summary>
 public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
-	IKeyMapRepository<TKey> keyMapRepository,	
+	IKeyMapRepository<TKey> keyMapRepository,
 	IMetricsRepository metricsRepository,
 	ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> logger)
 	where TInputParams : new()
@@ -24,7 +24,7 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 {
 	private readonly IKeyMapRepository<TKey> _keyMap = keyMapRepository;
 	private readonly IMetricsRepository _metrics = metricsRepository;
-	private readonly ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> _logger = logger;	
+	private readonly ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> _logger = logger;
 
 	/// <summary>
 	/// override this to invoke your various Step classes (using Step.ExecuteAsync)
@@ -39,16 +39,16 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 		IMetricsRepository metricsRepository,
 		ILogger<Step<TEntity>> logger) where TEntity : new()
 	{
-		protected readonly IKeyMapRepository<TKey> KeyMap = keyMap;		
+		protected readonly IKeyMapRepository<TKey> KeyMap = keyMap;
 		protected readonly ILogger<Step<TEntity>> Logger = logger;
-		
+
 		private readonly IMetricsRepository _metrics = metricsRepository;
 
 		protected abstract string Name { get; }
 		protected abstract Task<IEnumerable<TEntity>> QuerySourceRowsAsync(IDbConnection sourceConnection, TInputParams parameters);
 		protected abstract TEntity CreateNewRow(TInputParams parameters, TEntity sourceRow);
 		protected abstract TKey GetKey(TEntity sourceRow);
-		protected abstract Task<TKey> InsertNewRowAsync(IDbConnection destConnection, TEntity entity, TInputParams parameters);		
+		protected abstract Task<TKey> InsertNewRowAsync(IDbConnection destConnection, TEntity entity, TInputParams parameters);
 
 		protected virtual int MaxErrors => 10;
 
@@ -60,10 +60,10 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 
 			const string logTemplate = "Error in {location}, source key {sourceKey}";
 
-			var sw = Stopwatch.StartNew();			
+			var sw = Stopwatch.StartNew();
 			int successRows = 0;
 			int createErrors = 0;
-			int insertErrors = 0;			
+			int insertErrors = 0;
 			int skippedRows = 0;
 
 			try
@@ -72,7 +72,7 @@ public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
 				var sourceRows = await QuerySourceRowsAsync(sourceConnection, parameters);
 
 				try
-				{ 
+				{
 					foreach (var sourceRow in sourceRows)
 					{
 						if (cancellationToken.IsCancellationRequested) break;

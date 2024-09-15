@@ -1,5 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
-using SampleApp;
+using SampleAppLocal;
 
 using var cn = new SqlConnection(ApplicationDbContextFactory.GetConnectionString("master"));
 cn.Open();
