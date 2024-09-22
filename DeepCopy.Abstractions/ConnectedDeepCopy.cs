@@ -13,17 +13,17 @@ public enum ErrorLocation
 }
 
 /// <summary>
-/// Performs a multi-step copy operation between two connections, allowing for stopping and resuming.
+/// Performs a multi-step copy operation between two open connections, allowing for stopping and resuming.
 /// </summary>
-public abstract class RemoteDeepCopy<TKey>(
+public abstract class ConnectedDeepCopy<TKey>(
 	IKeyMapRepository<TKey> keyMapRepository,
 	IMetricsRepository metricsRepository,
-	ILogger<RemoteDeepCopy<TKey>> logger)	
+	ILogger<ConnectedDeepCopy<TKey>> logger)	
 	where TKey : notnull
 {
-	private readonly IKeyMapRepository<TKey> _keyMap = keyMapRepository;
-	private readonly IMetricsRepository _metrics = metricsRepository;
-	private readonly ILogger<RemoteDeepCopy<TKey>> _logger = logger;
+	protected readonly IKeyMapRepository<TKey> KeyMap = keyMapRepository;
+	protected readonly IMetricsRepository Metrics = metricsRepository;
+	protected readonly ILogger<ConnectedDeepCopy<TKey>> Logger = logger;
 
 	/// <summary>
 	/// override this to invoke your various Step classes (using Step.ExecuteAsync)
@@ -34,14 +34,9 @@ public abstract class RemoteDeepCopy<TKey>(
     /// defines an individual copy step as part of a larger operation
     /// </summary>   
     protected abstract class Step<TEntity>(
-        IMetricsRepository metricsRepository,
-        ILogger<RemoteDeepCopy<TKey>> logger,
-        IKeyMapRepository<TKey> keyMap) where TEntity : new()
-    {
-        private readonly IKeyMapRepository<TKey> _keyMap = keyMap;
-        private readonly ILogger<RemoteDeepCopy<TKey>> _logger = logger;
-
-        private readonly IMetricsRepository _metrics = metricsRepository;
+        ConnectedDeepCopy<TKey> operation) where TEntity : new()
+    {        
+        private readonly ConnectedDeepCopy<TKey> _operation = operation;
 
         protected abstract string Name { get; }
         protected abstract Task<IEnumerable<TEntity>> QuerySourceRowsAsync(IDbConnection sourceConnection, TKey parameter);
@@ -55,7 +50,7 @@ public abstract class RemoteDeepCopy<TKey>(
         {
             if (cancellationToken.IsCancellationRequested) return;
 
-            using var logScope = _logger.BeginScope("Step {StepName}", Name);
+            using var logScope = _operation.Logger.BeginScope("Step {StepName}", Name);
 
             const string logTemplate = "Error in {location}, source key {sourceKey}";
 
@@ -67,10 +62,10 @@ public abstract class RemoteDeepCopy<TKey>(
 
             try
             {
-                _logger.LogDebug("Initializing...");
-                await _keyMap.InitializeAsync();
+                _operation.Logger.LogDebug("Initializing...");
+                await _operation.KeyMap.InitializeAsync();
 
-                _logger.LogDebug("Querying...");
+                _operation.Logger.LogDebug("Querying...");
                 var sourceRows = await QuerySourceRowsAsync(sourceConnection, parameter);
 
                 try
@@ -80,10 +75,10 @@ public abstract class RemoteDeepCopy<TKey>(
                         if (cancellationToken.IsCancellationRequested) break;
 
                         var sourceKey = GetKey(sourceRow);
-                        if (_keyMap.ContainsKey(Name, sourceKey))
+                        if (_operation.KeyMap.ContainsKey(Name, sourceKey))
                         {
                             skippedRows++;
-                            _logger.LogDebug("Skipping row with key {Key}", sourceKey);
+                            _operation.Logger.LogDebug("Skipping row with key {Key}", sourceKey);
                             continue;
                         }
 
@@ -95,22 +90,22 @@ public abstract class RemoteDeepCopy<TKey>(
                             {
                                 var newKey = await InsertNewRowAsync(destConnection, newRow);
                                 successRows++;
-                                await _keyMap.AddAsync(Name, sourceKey, newKey);
+                                await _operation.KeyMap.AddAsync(Name, sourceKey, newKey);
                             }
                             catch (Exception exc)
                             {
                                 insertErrors++;
-                                _logger.LogError(exc, logTemplate, ErrorLocation.Inserting, sourceKey);
+                                _operation.Logger.LogError(exc, logTemplate, ErrorLocation.Inserting, sourceKey);
                             }
                         }
                         catch (Exception exc)
                         {
                             createErrors++;
-                            _logger.LogError(exc, logTemplate, ErrorLocation.Creating, sourceKey);
+                            _operation.Logger.LogError(exc, logTemplate, ErrorLocation.Creating, sourceKey);
                         }
                         if (createErrors + insertErrors >= MaxErrors)
                         {
-                            _logger.LogWarning("Too many errors, stopping");
+                            _operation.Logger.LogWarning("Too many errors, stopping");
                             break;
                         }
                     }
@@ -118,12 +113,12 @@ public abstract class RemoteDeepCopy<TKey>(
                 finally
                 {
                     sw.Stop();
-                    await _metrics.LogAsync(Name, successRows, insertErrors, createErrors, skippedRows, sw.Elapsed);
+                    await _operation.Metrics.LogAsync(Name, successRows, insertErrors, createErrors, skippedRows, sw.Elapsed);
                 }
             }
             catch (Exception exc)
             {
-                _logger.LogError(exc, logTemplate, ErrorLocation.Querying, default);
+                _operation.Logger.LogError(exc, logTemplate, ErrorLocation.Querying, default);
             }
         }
     }
