@@ -15,114 +15,116 @@ public enum ErrorLocation
 /// <summary>
 /// Performs a multi-step copy operation between two connections, allowing for stopping and resuming.
 /// </summary>
-public abstract class RemoteDeepCopy<TKey, TInputParams, TOutput>(
+public abstract class RemoteDeepCopy<TKey>(
 	IKeyMapRepository<TKey> keyMapRepository,
 	IMetricsRepository metricsRepository,
-	ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> logger)
-	where TInputParams : new()
+	ILogger<RemoteDeepCopy<TKey>> logger)	
 	where TKey : notnull
 {
 	private readonly IKeyMapRepository<TKey> _keyMap = keyMapRepository;
 	private readonly IMetricsRepository _metrics = metricsRepository;
-	private readonly ILogger<RemoteDeepCopy<TKey, TInputParams, TOutput>> _logger = logger;
+	private readonly ILogger<RemoteDeepCopy<TKey>> _logger = logger;
 
 	/// <summary>
 	/// override this to invoke your various Step classes (using Step.ExecuteAsync)
-	/// </summary>
-	public abstract Task<TOutput> ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken);
+	/// </summary>	
+	public abstract Task<TKey> ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, CancellationToken cancellationToken);
 
-	/// <summary>
-	/// defines an individual copy step as part of a larger operation
-	/// </summary>   
-	protected abstract class Step<TEntity>(
-		IKeyMapRepository<TKey> keyMap,
-		IMetricsRepository metricsRepository,
-		ILogger<Step<TEntity>> logger) where TEntity : new()
-	{
-		protected readonly IKeyMapRepository<TKey> KeyMap = keyMap;
-		protected readonly ILogger<Step<TEntity>> Logger = logger;
+    /// <summary>
+    /// defines an individual copy step as part of a larger operation
+    /// </summary>   
+    protected abstract class Step<TEntity>(
+        IMetricsRepository metricsRepository,
+        ILogger<RemoteDeepCopy<TKey>> logger,
+        IKeyMapRepository<TKey> keyMap) where TEntity : new()
+    {
+        private readonly IKeyMapRepository<TKey> _keyMap = keyMap;
+        private readonly ILogger<RemoteDeepCopy<TKey>> _logger = logger;
 
-		private readonly IMetricsRepository _metrics = metricsRepository;
+        private readonly IMetricsRepository _metrics = metricsRepository;
 
-		protected abstract string Name { get; }
-		protected abstract Task<IEnumerable<TEntity>> QuerySourceRowsAsync(IDbConnection sourceConnection, TInputParams parameters);
-		protected abstract TEntity CreateNewRow(TInputParams parameters, TEntity sourceRow);
-		protected abstract TKey GetKey(TEntity sourceRow);
-		protected abstract Task<TKey> InsertNewRowAsync(IDbConnection destConnection, TEntity entity, TInputParams parameters);
+        protected abstract string Name { get; }
+        protected abstract Task<IEnumerable<TEntity>> QuerySourceRowsAsync(IDbConnection sourceConnection, TKey parameter);
+        protected abstract TEntity CreateNewRow(TEntity sourceRow);
+        protected abstract TKey GetKey(TEntity sourceRow);
+        protected abstract Task<TKey> InsertNewRowAsync(IDbConnection destConnection, TEntity entity);
 
-		protected virtual int MaxErrors => 10;
+        protected virtual int MaxErrors => 10;
 
-		public async Task ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TInputParams parameters, CancellationToken cancellationToken)
-		{
-			if (cancellationToken.IsCancellationRequested) return;
+        public async Task ExecuteAsync(IDbConnection sourceConnection, IDbConnection destConnection, TKey parameter, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested) return;
 
-			using var logScope = Logger.BeginScope("Step {StepName}, input params {@parameters}", Name, parameters);
+            using var logScope = _logger.BeginScope("Step {StepName}", Name);
 
-			const string logTemplate = "Error in {location}, source key {sourceKey}";
+            const string logTemplate = "Error in {location}, source key {sourceKey}";
 
-			var sw = Stopwatch.StartNew();
-			int successRows = 0;
-			int createErrors = 0;
-			int insertErrors = 0;
-			int skippedRows = 0;
+            var sw = Stopwatch.StartNew();
+            int successRows = 0;
+            int createErrors = 0;
+            int insertErrors = 0;
+            int skippedRows = 0;            
 
-			try
-			{
-				Logger.LogDebug("Querying...");
-				var sourceRows = await QuerySourceRowsAsync(sourceConnection, parameters);
+            try
+            {
+                _logger.LogDebug("Initializing...");
+                await _keyMap.InitializeAsync();
 
-				try
-				{
-					foreach (var sourceRow in sourceRows)
-					{
-						if (cancellationToken.IsCancellationRequested) break;
+                _logger.LogDebug("Querying...");
+                var sourceRows = await QuerySourceRowsAsync(sourceConnection, parameter);
 
-						var sourceKey = GetKey(sourceRow);
-						if (KeyMap.ContainsKey(Name, sourceKey))
-						{
-							skippedRows++;
-							Logger.LogDebug("Skipping row with key {Key}", sourceKey);
-							continue;
-						}
+                try
+                {
+                    foreach (var sourceRow in sourceRows)
+                    {
+                        if (cancellationToken.IsCancellationRequested) break;
 
-						try
-						{
-							var newRow = CreateNewRow(parameters, sourceRow);
+                        var sourceKey = GetKey(sourceRow);
+                        if (_keyMap.ContainsKey(Name, sourceKey))
+                        {
+                            skippedRows++;
+                            _logger.LogDebug("Skipping row with key {Key}", sourceKey);
+                            continue;
+                        }
 
-							try
-							{
-								var newKey = await InsertNewRowAsync(destConnection, newRow, parameters);
-								successRows++;
-								await KeyMap.AddAsync(Name, sourceKey, newKey);
-							}
-							catch (Exception exc)
-							{
-								insertErrors++;
-								Logger.LogError(exc, logTemplate, ErrorLocation.Inserting, sourceKey);
-							}
-						}
-						catch (Exception exc)
-						{
-							createErrors++;
-							Logger.LogError(exc, logTemplate, ErrorLocation.Creating, sourceKey);
-						}
-						if (createErrors + insertErrors >= MaxErrors)
-						{
-							Logger.LogWarning("Too many errors, stopping");
-							break;
-						}
-					}
-				}
-				finally
-				{
-					sw.Stop();
-					await _metrics.LogAsync(Name, successRows, insertErrors, createErrors, skippedRows, sw.Elapsed);
-				}
-			}
-			catch (Exception exc)
-			{
-				Logger.LogError(exc, logTemplate, ErrorLocation.Querying, default);
-			}
-		}
-	}
+                        try
+                        {
+                            var newRow = CreateNewRow(sourceRow);
+
+                            try
+                            {
+                                var newKey = await InsertNewRowAsync(destConnection, newRow);
+                                successRows++;
+                                await _keyMap.AddAsync(Name, sourceKey, newKey);
+                            }
+                            catch (Exception exc)
+                            {
+                                insertErrors++;
+                                _logger.LogError(exc, logTemplate, ErrorLocation.Inserting, sourceKey);
+                            }
+                        }
+                        catch (Exception exc)
+                        {
+                            createErrors++;
+                            _logger.LogError(exc, logTemplate, ErrorLocation.Creating, sourceKey);
+                        }
+                        if (createErrors + insertErrors >= MaxErrors)
+                        {
+                            _logger.LogWarning("Too many errors, stopping");
+                            break;
+                        }
+                    }
+                }
+                finally
+                {
+                    sw.Stop();
+                    await _metrics.LogAsync(Name, successRows, insertErrors, createErrors, skippedRows, sw.Elapsed);
+                }
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError(exc, logTemplate, ErrorLocation.Querying, default);
+            }
+        }
+    }
 }
